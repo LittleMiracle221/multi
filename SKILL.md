@@ -1,6 +1,6 @@
 ---
 name: degate-multi-intel
-description: 每日扫描加拿大、澳大利亚、法国加密货币与个人财经社区的合规焦虑与自托管讨论，为 DeGate 多链自托管钱包找软性营销切入点。触发场景：用户说"扫 CA 舆情"、"DeGate 日报"、"加拿大加密情报"、"Australian crypto sentiment"、"CARF/T1135/ATO/DAC8 用户讨论"、"法国加密日报"、"5A 战略情报"、"找软营销切入点"，或给出 date_range + market 的扫描请求时，都应调用本技能。即使用户只说"看看加拿大 crypto 论坛有啥"、"跑一下 FR 日报"，也应触发。产出 Markdown 日报 + 结构化 JSON，覆盖每个市场的 Reddit 子版、主流 KOL 候选、本地论坛；对 Twitter/X、Telegram、Discord 的覆盖缺口诚实披露。**market 参数强制必填**，目前支持 `CA` / `AU` / `FR`；扩展新市场时在 `references/markets/` 下新增 `{xx}.md` 即可。
+description: 每日扫描加拿大、澳大利亚、法国加密货币与个人财经社区的合规焦虑与自托管讨论，为 DeGate 多链自托管钱包找软性营销切入点。触发场景：用户说"扫 CA 舆情"、"DeGate 日报"、"加拿大加密情报"、"Australian crypto sentiment"、"CARF/T1135/ATO/DAC8 用户讨论"、"法国加密日报"、"5A 战略情报"、"找软营销切入点"，或给出 date_range + market 的扫描请求时，都应调用本技能。即使用户只说"看看加拿大 crypto 论坛有啥"、"跑一下 FR 日报"，也应触发。产出 Markdown 日报 + 结构化 JSON，覆盖每个市场的 Reddit 子版、主流 KOL 候选、本地论坛；对 Telegram、Discord 等未接入通道的覆盖缺口诚实披露。**market 参数强制必填**，目前支持 `CA` / `AU` / `FR`；扩展新市场时在 `references/markets/` 下新增 `{xx}.md` 即可。
 ---
 
 # DeGate Multi-Market Intelligence Daily
@@ -135,7 +135,16 @@ https://www.reddit.com/r/{subreddit}/search.json?q={keyword}&restrict_sr=1&sort=
 
 **本地论坛 / 垂类**：见当前 market 插件的"本地论坛"段。
 
-**Telegram / Discord**：当前无 MCP 连接。记为 `coverage_gap`，不要编造内容。
+**Telegram（当前未接入，但 2026-04 已确认上游迁移方法）**
+
+- 当前 AU / CA / FR 版本还没有 Telegram 扫描脚本，暂时仍记 `coverage_gap`，不要编造内容。
+- 但后续一旦接入，**不要把 Telegram 当成独立旁路**。正确做法是：
+- 把 Telegram 消息映射成和 Reddit / Twitter 可并行消费的 lead 候选
+- 沿用同一套 §2 过滤打分、§4 `daily_themes` 聚类和 `platform` 字段规范
+- 从“固定 `telegram` gap”切换成“只有运行失败时才出现”的条件性 gap 命名
+- 迁移判断标准：接入完成不等于“能抓消息”，而是“能被同一 schema 稳定消费”。
+
+**Discord**：当前无 MCP 连接。记为 `coverage_gap`，不要编造内容。
 
 **空结果 & 故障处理**（重要 —— 不自动扩窗）：
 - 若目标子版在 `date_range_hours` 内无匹配帖 → **如实在报告里写"72h 内无匹配"**，**不要自动扩到 7 天凑数**。用户设的时间窗就是用户想看的时间窗，诚实 > 数据量。Evergreen 候选池是独立扫的（`sort=top&t=year`），本来就可以单独产出，不用作为"扩窗"的借口。
@@ -250,7 +259,7 @@ Markdown 日报结构固定：
 结尾一行：附：结构化 JSON（同目录 <...>.json）
 ```
 
-JSON schema 见 `references/output-schema.md`。核心字段（关键变化：`market` 必填，`reply_draft_{lang}` 替代硬编码 `reply_draft_it`，加了 `schema_version` 字段，**去掉 `kol_handoff` / `kol_candidates` 字段**，platform 支持 `"reddit" | "twitter" | "forum"`）：
+JSON schema 见 `references/output-schema.md`。核心字段（关键变化：`market` 必填，`reply_draft_{lang}` 替代硬编码 `reply_draft_it`，加了 `schema_version` 字段，**去掉 `kol_handoff` / `kol_candidates` 字段**，platform 当前支持 `"reddit" | "twitter" | "forum"`，并为未来 Telegram 接入保留统一扩展路径）：
 ```json
 {
   "schema_version": "2.1",
@@ -290,7 +299,7 @@ JSON schema 见 `references/output-schema.md`。核心字段（关键变化：`m
 2. **匹配牵强吗？** → 回答时点名 fit=中低 或 evergreen 的那几条为什么仍然列出，而不是一句"没牵强"搪塞。
 3. **事实性检查（market-specific）** → 针对本市场的 3 个易错事实做自查（见 `narrative-compliance.md` 的市场分节），例如："reply 里没有把 T1135 自托管豁免等同于免除 capital gains 申报义务；没有说 AU 钱包间转账完全无需记录；没有说 FR non-custodial 可以跳过 capital gains。"
 4. **回帖会不会像广告？** → 回答时说明这批 reply_draft 的具体反广告手法（先共情 / 先回答问题 / 把 DeGate 放进竞品并列 / 引用竞品 Rabby/Safe 做参照）。
-5. **有没有漏大平台？** → 回答时列具体盲区和原因，不是"已披露"三个字。例："Twitter/X 通过 xAI Q1+Q2 已扫，本期 ✅ N 条；Telegram/Discord 仍无 MCP；本地论坛 X 搜索引擎不吐具体帖路径。"
+5. **有没有漏大平台？** → 回答时列具体盲区和原因，不是"已披露"三个字。例："Twitter/X 通过 xAI Q1+Q2 已扫，本期 ✅ N 条；Telegram 尚未接入本地扫描链路；Discord 无 MCP；本地论坛 X 搜索引擎不吐具体帖路径。"
 6. **行动指南够具体吗？** → 回答时数一下：几条回帖 + 几个内容选题 + 几条 watch list，全部带链接或草稿。
 
 模板化的 ✅✓ 打勾视为没过。
@@ -304,6 +313,11 @@ JSON schema 见 `references/output-schema.md`。核心字段（关键变化：`m
 - Discord MCP
 - 本地封闭论坛（如 Whirlpool AU、FinanzaOnline IT 等）直接抓取
 - Twitter/X 区域语种精准聚合器
+
+**补充原则（2026-04 从 italy_intel 同步）**：
+- 新渠道接入后，优先统一 lead schema 和评分管线，避免下游逻辑分叉。
+- `coverage_gaps` 里“固定未接入”与“本期运行失败”要分开命名，不混写。
+- 流式渠道（如 Telegram / X）默认不走 evergreen 逻辑。
 
 ## 参考文件
 
